@@ -1,6 +1,6 @@
 # Elmate
 
-A small, dependency-free Emacs chat mode for OpenAI-compatible chat completions.
+A small Emacs chat mode for OpenAI-compatible chat completions.
 
 ## Install
 

@@ -2,16 +2,17 @@
 
 ;; Copyright (C) 2026
 ;; SPDX-License-Identifier: GPL-3.0-or-later
-;; Package-Requires: ((emacs "27.1"))
+;; Package-Requires: ((emacs "27.1") (markdown-mode "2.6"))
 
 ;;; Commentary:
-;; A small, dependency-free OpenAI-compatible streaming chat buffer.
+;; A small OpenAI-compatible streaming chat buffer with Markdown rendering.
 
 ;;; Code:
 
 (require 'auth-source)
 (require 'cl-lib)
 (require 'json)
+(require 'markdown-mode)
 (require 'project)
 (require 'subr-x)
 (require 'url)
@@ -197,7 +198,7 @@
     (define-key map (kbd "C-c C-k") #'elmate-clear)
     map))
 
-(define-derived-mode elmate-chat-mode text-mode "Elmate"
+(define-derived-mode elmate-chat-mode markdown-mode "Elmate"
   "Major mode for Elmate chat.\n\nC-c C-c sends the prompt; C-c C-k starts a new chat."
   (setq-local buffer-read-only nil)
   (setq-local truncate-lines nil)
