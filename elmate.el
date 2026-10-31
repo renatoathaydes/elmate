@@ -165,7 +165,8 @@
                   (copy-marker (- (point) (length content) 2) nil))))))
     (elmate--insert-prompt)
     (setq buffer-read-only nil)
-    (goto-char (point-max))))
+    (goto-char (point-max))
+    (font-lock-ensure)))
 
 (defun elmate--new-chat (root)
   "Initialize a clean chat for ROOT."
@@ -203,7 +204,8 @@
   (setq-local buffer-read-only nil)
   (setq-local truncate-lines nil)
   (setq-local elmate--history nil)
-  (setq-local elmate--busy nil))
+  (setq-local elmate--busy nil)
+  (font-lock-mode 1))
 
 ;;;###autoload
 (defun elmate-chat ()
@@ -350,7 +352,8 @@
           (goto-char end)
           (insert (propertize text 'read-only t))
           (set-marker elmate--reply-marker (+ end (length text)))
-          (goto-char (point-max)))))))
+          (goto-char (point-max))
+          (font-lock-ensure))))))
 
 (defun elmate--request-finished (status chat)
   "Handle completed URL retrieval with STATUS for CHAT."
