@@ -199,13 +199,14 @@
     (define-key map (kbd "C-c C-k") #'elmate-clear)
     map))
 
-(define-derived-mode elmate-chat-mode markdown-mode "Elmate"
+(define-derived-mode elmate-chat-mode text-mode "Elmate"
   "Major mode for Elmate chat.\n\nC-c C-c sends the prompt; C-c C-k starts a new chat."
   (setq-local buffer-read-only nil)
   (setq-local truncate-lines nil)
   (setq-local elmate--history nil)
   (setq-local elmate--busy nil)
-  (font-lock-mode 1))
+  (use-local-map elmate-chat-mode-map)
+  (markdown-mode))
 
 ;;;###autoload
 (defun elmate-chat ()

@@ -6,7 +6,7 @@
 (ert-deftest elmate-chat-buffer-has-editable-prompt ()
   (with-temp-buffer
     (elmate-chat-mode)
-    (should (derived-mode-p 'markdown-mode))
+    (should (eq major-mode 'markdown-mode))
     (setq-local elmate--project-root default-directory)
     (elmate--new-chat default-directory)
     (goto-char (point-max))
