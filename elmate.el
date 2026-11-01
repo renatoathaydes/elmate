@@ -42,6 +42,10 @@
 (defvar-local elmate--busy nil)
 (defvar-local elmate--prompt-marker nil)
 (defvar-local elmate--reply-marker nil)
+(defvar-local elmate--indicator-start nil)
+(defvar-local elmate--indicator-end nil)
+(defvar-local elmate--indicator-timer nil)
+(defvar-local elmate--indicator-frame 0)
 (defvar-local elmate--project-root nil)
 (defvar-local elmate--chat-id nil)
 (defvar-local elmate--system-context nil)
@@ -256,6 +260,7 @@
         (insert (propertize "\n" 'read-only t))
         (elmate--insert-prompt))
       (setq elmate--busy t elmate--retry-count 0)
+      (elmate--start-indicator)
       (elmate--save)
       (elmate--request))
     (goto-char (point-max))))
@@ -269,6 +274,7 @@
 
 (defun elmate--restore-prompt-state ()
   "Re-enable editing after a request finishes or fails."
+  (elmate--stop-indicator)
   (setq elmate--busy nil)
   (setq buffer-read-only nil)
   (when (markerp elmate--prompt-marker)
@@ -343,11 +349,62 @@
                (elmate--request-failed (format "Invalid streaming response: %s" err))))))))
     (setq elmate--event-data "")))
 
+(defun elmate--start-indicator ()
+  "Show animated working feedback before the assistant reply."
+  (elmate--stop-indicator)
+  (let ((inhibit-read-only t)
+        (position (marker-position elmate--reply-marker)))
+    (setq elmate--indicator-frame 1
+          elmate--indicator-start (copy-marker position nil)
+          elmate--indicator-end (copy-marker position t))
+    (goto-char position)
+    (insert (propertize "Thinking." 'face 'shadow 'read-only t))
+    (set-marker elmate--indicator-end (point))
+    (set-marker elmate--reply-marker (point))
+    (setq elmate--indicator-timer
+          (run-at-time 0.45 0.45 #'elmate--animate-indicator (current-buffer)))))
+
+(defun elmate--animate-indicator (buffer)
+  "Advance the animated indicator in BUFFER."
+  (when (buffer-live-p buffer)
+    (with-current-buffer buffer
+      (when (and elmate--busy (markerp elmate--indicator-start)
+                 (markerp elmate--indicator-end))
+        (let* ((dots (1+ (% elmate--indicator-frame 3)))
+               (text (concat "Thinking" (make-string dots ?.)))
+               (inhibit-read-only t)
+               (start (marker-position elmate--indicator-start)))
+          (delete-region start elmate--indicator-end)
+          (goto-char start)
+          (insert (propertize text 'face 'shadow 'read-only t))
+          (set-marker elmate--indicator-end (point))
+          (set-marker elmate--reply-marker (point))
+          (setq elmate--indicator-frame (1+ elmate--indicator-frame)))))))
+
+(defun elmate--stop-indicator ()
+  "Cancel animation and remove its pending text, if present."
+  (when (timerp elmate--indicator-timer)
+    (cancel-timer elmate--indicator-timer))
+  (setq elmate--indicator-timer nil)
+  (when (and (markerp elmate--indicator-start)
+             (marker-position elmate--indicator-start)
+             (markerp elmate--indicator-end)
+             (marker-position elmate--indicator-end))
+    (let ((inhibit-read-only t)
+          (position (marker-position elmate--indicator-start)))
+      (delete-region position elmate--indicator-end)
+      (when (markerp elmate--reply-marker)
+        (set-marker elmate--reply-marker position))))
+  (when (markerp elmate--indicator-start) (set-marker elmate--indicator-start nil))
+  (when (markerp elmate--indicator-end) (set-marker elmate--indicator-end nil))
+  (setq elmate--indicator-start nil elmate--indicator-end nil))
+
 (defun elmate--append-delta (text)
   "Append streamed TEXT to the assistant reply."
   (let ((chat elmate--chat-buffer))
     (when (buffer-live-p chat)
       (with-current-buffer chat
+        (elmate--stop-indicator)
         (let ((inhibit-read-only t)
               (end (marker-position elmate--reply-marker)))
           (goto-char end)
@@ -382,6 +439,7 @@
           (with-current-buffer request-buffer (elmate--request-buffer-changed))
           (when (buffer-live-p chat)
             (with-current-buffer chat
+              (elmate--stop-indicator)
               (let* ((prompt-start (- (marker-position elmate--prompt-marker) 2))
                      (answer (buffer-substring-no-properties elmate--reply-marker prompt-start)))
                 (when elmate--reply-marker
@@ -402,6 +460,7 @@
       (progn
         (let ((inhibit-read-only t)
               (prompt-start (- (marker-position elmate--prompt-marker) 2)))
+          (elmate--stop-indicator)
           (delete-region elmate--reply-marker prompt-start)
           (set-marker elmate--reply-marker (marker-position elmate--reply-marker)))
         (setq elmate--retry-count (1+ elmate--retry-count))
@@ -409,6 +468,7 @@
           (goto-char (point-max))
           (insert (format-time-string "%FT%T%z ") "Elmate: " message "\n"))
         (display-buffer elmate--warnings-buffer)
+        (elmate--start-indicator)
         (elmate--request))
     (elmate--append-before-prompt (format "\n[Elmate error: %s]\n" message) 'error)
     (elmate--restore-prompt-state)

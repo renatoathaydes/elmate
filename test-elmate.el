@@ -72,6 +72,45 @@
       (when (buffer-live-p chat) (kill-buffer chat))
       (when (buffer-live-p request) (kill-buffer request))))))
 
+(ert-deftest elmate-working-indicator-animates-and-cleans-up-on-streaming ()
+  (let ((chat (generate-new-buffer " *elmate-indicator-test*"))
+        (request (generate-new-buffer " *elmate-indicator-request-test*")))
+    (unwind-protect
+        (progn
+          (with-current-buffer chat
+            (insert "Assistant\n")
+            (setq-local elmate--reply-marker (copy-marker (point) nil)
+                        elmate--busy t)
+            (elmate--start-indicator)
+            (should (timerp elmate--indicator-timer))
+            (should (string-match-p "Thinking\\." (buffer-string)))
+            (elmate--animate-indicator chat)
+            (should (string-match-p "Thinking\\.\\." (buffer-string))))
+          (with-current-buffer request
+            (setq-local elmate--chat-buffer chat)
+            (with-current-buffer chat
+              (setq-local elmate--busy t))
+            (elmate--append-delta "hello"))
+          (with-current-buffer chat
+            (should-not elmate--indicator-timer)
+            (should-not (string-match-p "Thinking" (buffer-string)))
+            (should (string-match-p "hello" (buffer-string)))))
+      (when (buffer-live-p chat)
+        (with-current-buffer chat (elmate--stop-indicator))
+        (kill-buffer chat))
+      (when (buffer-live-p request) (kill-buffer request)))))
+
+(ert-deftest elmate-working-indicator-is-removed-on-request-termination ()
+  (with-temp-buffer
+    (insert "Assistant\n")
+    (setq-local elmate--reply-marker (copy-marker (point) nil)
+                elmate--busy t)
+    (elmate--start-indicator)
+    (elmate--restore-prompt-state)
+    (should-not elmate--busy)
+    (should-not elmate--indicator-timer)
+    (should-not (string-match-p "Thinking" (buffer-string)))))
+
 (ert-deftest elmate-session-round-trip-json-shape ()
   (let* ((root (make-temp-file "elmate-project" t))
          (elmate-chat-directory (make-temp-file "elmate-store" t))
