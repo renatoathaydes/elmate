@@ -1,6 +1,7 @@
 ;;; test-elmate.el --- Tests for Elmate -*- lexical-binding: t; -*-
 
 (require 'ert)
+(require 'cl-lib)
 (require 'elmate)
 
 (ert-deftest elmate-chat-buffer-has-editable-prompt ()
@@ -28,29 +29,62 @@
     (should (equal (buffer-substring-no-properties elmate--prompt-marker (point-max))
                    "hellox"))))
 
-(ert-deftest elmate-send-locks-prompt-until-response-finishes ()
+(ert-deftest elmate-send-locks-buffer-during-request ()
   (with-temp-buffer
     (elmate-chat-mode)
     (setq major-mode 'elmate-chat-mode
           elmate--project-root default-directory)
     (elmate--new-chat default-directory)
     (goto-char (point-max))
-    (insert "hello")
-    (cl-letf (((symbol-function 'elmate--request) #'ignore))
+    (insert "test")
+    (cl-letf (((symbol-function 'elmate--request) (lambda nil nil)))
       (elmate-send))
     (should elmate--busy)
     (should buffer-read-only)
-    (should-not (get-text-property (marker-position elmate--prompt-marker) 'read-only))
-    (goto-char (point-max))
-    (should-error (insert "x") :type 'buffer-read-only)
     (elmate--restore-prompt-state)
     (should-not elmate--busy)
     (should-not buffer-read-only)
-    (should-not (get-text-property (marker-position elmate--prompt-marker) 'read-only))
+    (let ((last-command-event ?x))
+      (call-interactively #'self-insert-command))
+    (should (string-match-p "> x" (buffer-string)))))
+
+(ert-deftest elmate-prompt-stays-editable-after-font-lock ()
+  "Markdown font-lock must not make text typed after the prompt read-only."
+  (with-temp-buffer
+    (elmate-chat-mode)
+    (setq major-mode 'elmate-chat-mode
+          elmate--project-root default-directory)
+    (elmate--new-chat default-directory)
+    (font-lock-ensure)
+    (goto-char (point-max))
+    (dolist (ch (string-to-list "abc"))
+      (let ((last-command-event ch))
+        (call-interactively #'self-insert-command)))
+    (should (equal (buffer-substring-no-properties elmate--prompt-marker (point-max))
+                   "abc"))))
+
+(ert-deftest elmate-prompt-editable-after-send-and-response ()
+  "The fresh prompt after a send is editable, and the old transcript is not."
+  (with-temp-buffer
+    (elmate-chat-mode)
+    (setq major-mode 'elmate-chat-mode
+          elmate--project-root default-directory)
+    (elmate--new-chat default-directory)
+    (goto-char (point-max))
+    (insert "first")
+    (cl-letf (((symbol-function 'elmate--request) (lambda nil nil)))
+      (elmate-send))
+    (elmate--restore-prompt-state)
+    (font-lock-ensure)
     (goto-char (point-max))
     (let ((last-command-event ?x))
       (call-interactively #'self-insert-command))
-    (should (equal (buffer-substring-no-properties elmate--prompt-marker (point-max)) "x"))))
+    (should (equal (buffer-substring-no-properties elmate--prompt-marker (point-max))
+                   "x"))
+    (should-error (progn (goto-char (+ (point-min) 3))
+                         (let ((last-command-event ?z))
+                           (call-interactively #'self-insert-command)))
+                  :type 'text-read-only)))
 
 (ert-deftest elmate-completion-url-appends-route-to-base-url ()
   (should (equal (elmate--completion-url "https://router.requesty.ai/v1")
