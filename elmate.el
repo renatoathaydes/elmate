@@ -212,16 +212,16 @@ falls outside the overlay, so typing there stays allowed."
     (define-key map (kbd "C-c C-k") #'elmate-clear)
     map))
 
-(define-derived-mode elmate-chat-mode text-mode "Elmate"
+;; Derived from `markdown-mode' (not called from the body): a major mode's
+;; body runs `kill-all-local-variables' and installs its own keymap, which
+;; would drop `elmate-chat-mode' and its bindings.
+(define-derived-mode elmate-chat-mode markdown-mode "Elmate"
   "Major mode for Elmate chat.\n\nC-c C-c sends the prompt; C-c C-k starts a new chat."
   (setq-local buffer-read-only nil)
   (setq-local truncate-lines nil)
   (setq-local elmate--history nil)
   (setq-local elmate--busy nil)
-  (use-local-map elmate-chat-mode-map)
-  (markdown-mode)
-  ;; Set after `markdown-mode', which resets buffer-local variables. Read-only
-  ;; text must never extend to what the user types after it: font-lock can
+  ;; Read-only text must never extend to what the user types after it: font-lock can
   ;; rewrite per-character `rear-nonsticky', so make this buffer-wide.
   (setq-local text-property-default-nonsticky
               (cons '(read-only . t)

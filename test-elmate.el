@@ -7,7 +7,9 @@
 (ert-deftest elmate-chat-buffer-has-editable-prompt ()
   (with-temp-buffer
     (elmate-chat-mode)
-    (should (eq major-mode 'markdown-mode))
+    (should (eq major-mode 'elmate-chat-mode))
+    (should (derived-mode-p 'markdown-mode))
+    (should (eq (key-binding (kbd "C-c C-c")) #'elmate-send))
     (setq major-mode 'elmate-chat-mode
           elmate--project-root default-directory)
     (elmate--new-chat default-directory)
