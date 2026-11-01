@@ -22,6 +22,7 @@ Getting AI help currently means leaving Emacs or using a separate chat, interrup
 
 - Open a chat buffer with the current project's `AGENTS.md` file as initial context when present, plus a small configurable system prompt.
 - Send prompts with earlier turns from the same buffer as conversation context and display model responses progressively as they arrive.
+- Show animated “Thinking…” feedback beneath the assistant label while a response is pending, including before the first streamed token; remove it when the response starts or the request ends.
 - Configure the API URL and model. Store the API key using an environment variable or a standard Emacs secret source rather than ordinary customization settings.
 - Keep conversations in the buffer by default; local persistence is opt-in. When opening a project chat buffer, offer to resume a locally stored chat or start a new one.
 - On an API error, report the first failure in the warnings buffer and retry once automatically; if the retry also fails, show an error in the chat buffer and stop.
