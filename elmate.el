@@ -259,7 +259,8 @@
         (setq elmate--reply-marker (copy-marker (point) nil))
         (insert (propertize "\n" 'read-only t))
         (elmate--insert-prompt))
-      (setq elmate--busy t elmate--retry-count 0)
+      (setq elmate--busy t elmate--retry-count 0
+            buffer-read-only t)
       (elmate--start-indicator)
       (elmate--save)
       (elmate--request))
@@ -276,10 +277,7 @@
   "Re-enable editing after a request finishes or fails."
   (elmate--stop-indicator)
   (setq elmate--busy nil)
-  (setq buffer-read-only nil)
-  (when (markerp elmate--prompt-marker)
-    (put-text-property (marker-position elmate--prompt-marker) (point-max)
-                       'read-only nil)))
+  (setq buffer-read-only nil))
 
 (defun elmate--request ()
   "Start the asynchronous streaming chat request."
